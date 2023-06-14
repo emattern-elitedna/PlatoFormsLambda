@@ -68,7 +68,7 @@ class AthenaProxyClient(MicroserviceAPIClient):
         }
       
     
-        response = self._create_requests(
+        response = self._create_request(
             method='POST',
             endpoint='/patient_check',
             payload=payload,
@@ -80,12 +80,13 @@ class AthenaProxyClient(MicroserviceAPIClient):
         print('Patient not found in Athena')
             
         
+        
     def patient_details(self, patient_id):
         payload = {
            'patient_id': patient_id
         }
      
-        response = self._create_requests(
+        response = self._create_request(
             method='GET',
             endpoint='/patientg/patient/details',
             payload=payload,
@@ -160,16 +161,17 @@ class AthenaClient(MicroserviceAPIClient):
             'Accept': 'application/json',
             'Authorization': 'Bearer ' + str(self._token)
         }
+     
         response = self._create_request(
             method="POST",
-            endpoint=f"/patients/{payload.get('data').get('patient_id')}/documents/clinicaldocument",
+            endpoint=f"/patients/{payload.get('data').get('patient_id')}/documents",
             headers=headers,
             payload=payload.get('data'),
             files=files
         )
         
-        print(response)
-        if 'success' in response:
+        
+        if response:
             return True 
         else:
            return False

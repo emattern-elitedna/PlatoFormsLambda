@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from clients import platoform_client
 from repos import discharge_repo_client
+from clients import athena_proxy_client
 from fuzzywuzzy import process
 from utilities.parsers import parse_name
 
@@ -17,24 +18,25 @@ class PlatoFormSubmission:
     
 
 class DisChargeSubmissionManager:
+
+    store = athena_proxy_client
     
     def __init__(self, model):
         self.model = model
         self.submission_obj = None
-        # athena clioent
-    
+        
     def process_submission(self, data, path):
         self.submission_obj = self._load_submission(data)
-#         self._download_submission_pdf(path)
+        self._download_submission_pdf(path)
         patient_info = self.extract_submit_data(["Chart Number", "PT Name", "Date of Birth"])
         patient_id = validate_patient(patient_info)
         payload = self._create_pdf_payload(patient_id, path)
         if patient_id:
             submission_record = self._create_submission_record()
-#         created = discharge_repo_client.create(data=submission_record, payload=payload)
-            return True
-        # if created:
-        #     return True
+            if discharge_repo_client.create(data=submission_record, payload=payload):
+                return True
+        else:
+            print('No patient found')
     
     
     def _load_submission(self, dictionary):
@@ -100,7 +102,8 @@ class DisChargeSubmissionManager:
                 'attachmenttype': 'PDF',
                 'documenttypeid': 341373, # ID for Discharge Summary
                 'patient_id': patient_id,
-                'internalnote': 'Discharge Summary'
+                'internalnote': 'Discharge Summary',
+                'autoclose': True
             }
         }
         return payload
@@ -113,7 +116,7 @@ Manager needs to take in athena proxy client or just call it within these functi
 
 def _get_patient_details(chartnumber):
     # This will return false if a patient id doesnt exsist, at that point we double check with pt_check
-    pt_details = patient_details(chartnumber)
+    pt_details = DisChargeSubmissionManager.store.patient_details(chartnumber)
     if pt_details and 'error' in pt_details:
         return False
     elif pt_details:
@@ -136,7 +139,7 @@ def validate_patient(pt_info):
         the function returns the patient ID.
     '''
     firstname, lastname = parse_name(pt_info['PT Name'])
-    patient_id = patient_check(
+    patient_id = DisChargeSubmissionManager.store.patient_check(
         firstname,
         lastname,
         pt_info['Date of Birth']
@@ -158,6 +161,7 @@ def validate_patient(pt_info):
 def _validate_patient_name(patient_info, patient_details):
     patient_name = f"{patient_details['firstname']} {patient_details['lastname']}"
     if _match_name(patient_info['PT Name'], [patient_name]):
+        print("Patient info matched to chart")
         return True
 
 

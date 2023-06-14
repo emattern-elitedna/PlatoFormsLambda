@@ -37,7 +37,8 @@ class AuroraStore:
             print(f"Error adding to database: {e}")
             self.session.rollback()
         finally:
-                self.close()
+            self.close()
+            return True
 
 
     def close(self):
